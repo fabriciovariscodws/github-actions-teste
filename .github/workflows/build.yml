@@ -15,12 +15,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: 14
+          node-version: 18
 
       - name: Install dependencies
         run: npm install
 
-      - name: my-custom-build-verification
+      - name: Build project
         run: npm run build
 
       - name: Verify build success
@@ -38,7 +38,7 @@ jobs:
               status: 'completed',
             });
 
-            const buildCheck = checks.check_runs.find((check) => check.name === 'my-custom-build-verification');
+            const buildCheck = checks.check_runs.find((check) => check.name === 'Build project');
             if (buildCheck && buildCheck.conclusion === 'success') {
               console.log('Build passed. Allowing merge.');
             } else {
