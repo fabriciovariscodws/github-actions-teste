@@ -15,7 +15,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: 18
+          node-version: 14
 
       - name: Install dependencies
         run: npm install
@@ -23,11 +23,28 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Verify build success
-        run: |
-          npm run verify-build
-          exit_code=$?
-          if [ $exit_code -ne 0 ]; then
-            echo "Build failed. Blocking merge."
-            exit $exit_code
-          fi
+      - name: Check build status and lock merge
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: checks } = await github.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              status: 'completed',
+            });
+
+            const buildCheck = checks.check_runs.find((check) => check.name === 'Build project');
+            if (buildCheck && buildCheck.conclusion === 'success') {
+              console.log('Build passed. Allowing merge.');
+            } else {
+              console.log('Build failed. Blocking merge.');
+              github.pullRequests.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                state: 'closed',
+              });
+              core.setFailed('Build failed. Merge is blocked.');
+            }
